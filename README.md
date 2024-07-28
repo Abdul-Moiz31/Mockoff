@@ -30,9 +30,6 @@ npx create-next-app liftoff --example "https://github.com/Abdul-Moiz31/liftoff"
 
 ## Tech Stack + Features
 
-![Landing Page](https://ik.imagekit.io/9km72asqu/CleanShot_2023-05-31_at_12.43.54_svKkqF7dA.png?updatedAt=1685551454273)
-
-![Interview Selection](https://ik.imagekit.io/9km72asqu/CleanShot_2023-05-31_at_13.35.55_xohCRNMlJ.png?updatedAt=1685554576155)
 
 ### Frameworks
 
