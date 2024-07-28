@@ -14,7 +14,7 @@
 
 ## Introduction
 
-Liftoff is an interview preparation tool that provides AI feedback on your mock interviews.
+Mockoff is an interview preparation tool that provides AI feedback on your mock interviews.
 
 ## One-click Deploy
 
@@ -64,7 +64,7 @@ npx create-next-app liftoff --example "https://github.com/Abdul-Moiz31/liftoff"
 
 ## How it all works
 
-Liftoff uses FFmpeg to transcode the raw video into MP3. Chrome, Safari, and Firefox all record with different codecs, and FFmpeg is great for standardizing them.
+Mockoff uses FFmpeg to transcode the raw video into MP3. Chrome, Safari, and Firefox all record with different codecs, and FFmpeg is great for standardizing them.
 
 We then send the audio directly to be transcribed by OpenAI's Whisper endpoint, and then stream feedback from the edge using OpenAI's gpt-3.5-turbo.
 
