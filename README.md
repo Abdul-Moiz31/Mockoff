@@ -11,7 +11,7 @@
   <a href="https://twitter.com/tmeyer_me">
     <img src="https://img.shields.io/twitter/follow/tmeyer_me?style=flat&label=Follow&logo=twitter&color=0bf&logoColor=fff" alt="Tyler Meyer's follower count" />
   </a>
-  <a href="https://github.com/Tameyer41/liftoff">
+  <a href="https://github.com/Abdul-Moiz31/liftoff">
     <img src="https://img.shields.io/github/stars/Tameyer41/liftoff?label=Tameyer41%2Fliftoff" alt="Liftoff repo star count" />
   </a>
 </p>
@@ -37,7 +37,7 @@ You can deploy this template to Vercel with the button below:
 You can also clone & create this repo locally with the following command:
 
 ```bash
-npx create-next-app liftoff --example "https://github.com/Tameyer41/liftoff"
+npx create-next-app liftoff --example "https://github.com/Abdul-Moiz31/liftoff"
 ```
 
 ## Tech Stack + Features
@@ -80,6 +80,3 @@ Liftoff uses FFmpeg to transcode the raw video into MP3. Chrome, Safari, and Fir
 
 We then send the audio directly to be transcribed by OpenAI's Whisper endpoint, and then stream feedback from the edge using OpenAI's gpt-3.5-turbo.
 
-## Author
-
-- Tyler Meyer ([@tmeyer_me](https://twitter.com/tmeyer_me))
