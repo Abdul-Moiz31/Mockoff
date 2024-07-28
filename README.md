@@ -8,7 +8,7 @@
 </p>
 
 <p align="center">
-  <a href="https://twitter.com/tmeyer_me">
+  <a href="https://www.linkedin.com/in/im-abdulmoiz/">
     <img src="https://img.shields.io/twitter/follow/tmeyer_me?style=flat&label=Follow&logo=twitter&color=0bf&logoColor=fff" alt="Tyler Meyer's follower count" />
   </a>
   <a href="https://github.com/Abdul-Moiz31/liftoff">
