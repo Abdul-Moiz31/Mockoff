@@ -1,5 +1,6 @@
 import { Configuration, OpenAIApi } from "openai";
 import { IncomingForm } from "formidable";
+import { assertServerEnv } from "@/utils/env";
 const fs = require("fs");
 
 export const config = {
@@ -9,6 +10,15 @@ export const config = {
 };
 
 export default async function handler(req: any, res: any) {
+  try {
+    assertServerEnv("OPENAI_API_KEY");
+  } catch (err) {
+    console.error("[transcribe]", err);
+    return res
+      .status(500)
+      .json({ error: "Server is not configured for transcription." });
+  }
+
   const configuration = new Configuration({
     apiKey: process.env.OPENAI_API_KEY,
   });

@@ -77,6 +77,7 @@ export default function DemoPage() {
   const [completed, setCompleted] = useState(false);
   const [transcript, setTranscript] = useState("");
   const [generatedFeedback, setGeneratedFeedback] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
 
   useEffect(() => {
     setIsDesktop(window.innerWidth >= 768);
@@ -149,10 +150,22 @@ export default function DemoPage() {
   });
 
   const handleDownload = async () => {
-    if (recordedChunks.length) {
-      setSubmitting(true);
-      setStatus("Processing");
+    if (!recordedChunks.length) return;
 
+    setSubmitting(true);
+    setStatus("Processing");
+    setErrorMessage("");
+
+    const question =
+      selected.name === "Behavioral"
+        ? `Tell me about yourself. Why don${`’`}t you walk me through your resume?`
+        : selectedInterviewer.name === "John"
+        ? "What is a Hash Table, and what is the average case and worst case time for each of its operations?"
+        : selectedInterviewer.name === "Richard"
+        ? "Uber is looking to expand its product line. Talk me through how you would approach this problem."
+        : "You have a 3-gallon jug and 5-gallon jug, how do you measure out exactly 4 gallons?";
+
+    try {
       const file = new Blob(recordedChunks, {
         type: `video/webm`,
       });
@@ -192,15 +205,6 @@ export default function DemoPage() {
       formData.append("file", output, `${unique_id}.mp3`);
       formData.append("model", "whisper-1");
 
-      const question =
-        selected.name === "Behavioral"
-          ? `Tell me about yourself. Why don${`’`}t you walk me through your resume?`
-          : selectedInterviewer.name === "John"
-          ? "What is a Hash Table, and what is the average case and worst case time for each of its operations?"
-          : selectedInterviewer.name === "Richard"
-          ? "Uber is looking to expand its product line. Talk me through how you would approach this problem."
-          : "You have a 3-gallon jug and 5-gallon jug, how do you measure out exactly 4 gallons?";
-
       setStatus("Transcribing");
 
       const upload = await fetch(
@@ -210,76 +214,87 @@ export default function DemoPage() {
           body: formData,
         }
       );
-      const results = await upload.json();
+      const results = await upload.json().catch(() => ({}));
 
-      if (upload.ok) {
-        setIsSuccess(true);
-        setSubmitting(false);
+      // Surface server / moderation errors instead of treating them as a transcript.
+      if (!upload.ok || results.error) {
+        throw new Error(
+          results.error ||
+            "We couldn't transcribe your recording. Please try again."
+        );
+      }
 
-        if (results.error) {
-          setTranscript(results.error);
-        } else {
-          setTranscript(results.transcript);
-        }
+      const transcriptText: string =
+        typeof results.transcript === "string" ? results.transcript : "";
 
-        console.log("Uploaded successfully!");
+      setIsSuccess(true);
+      setSubmitting(false);
+      setTranscript(transcriptText);
 
-        await Promise.allSettled([
-          new Promise((resolve) => setTimeout(resolve, 800)),
-        ]).then(() => {
-          setCompleted(true);
-          console.log("Success!");
+      await new Promise((resolve) => setTimeout(resolve, 800));
+      setCompleted(true);
+
+      if (transcriptText.trim().length > 0) {
+        const prompt = `Please give feedback on the following interview question: ${question} given the following transcript: ${transcriptText}. ${
+          selected.name === "Behavioral"
+            ? "Please also give feedback on the candidate's communication skills. Make sure their response is structured (perhaps using the STAR or PAR frameworks)."
+            : "Please also give feedback on the candidate's communication skills. Make sure they accurately explain their thoughts in a coherent way. Make sure they stay on topic and relevant to the question."
+        } \n\n\ Feedback on the candidate's response:`;
+
+        setGeneratedFeedback("");
+        setStatus("Generating feedback");
+        const response = await fetch("/api/generate", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            prompt,
+          }),
         });
 
-        if (results.transcript.length > 0) {
-          const prompt = `Please give feedback on the following interview question: ${question} given the following transcript: ${
-            results.transcript
-          }. ${
-            selected.name === "Behavioral"
-              ? "Please also give feedback on the candidate's communication skills. Make sure their response is structured (perhaps using the STAR or PAR frameworks)."
-              : "Please also give feedback on the candidate's communication skills. Make sure they accurately explain their thoughts in a coherent way. Make sure they stay on topic and relevant to the question."
-          } \n\n\ Feedback on the candidate's response:`;
-
-          setGeneratedFeedback("");
-          const response = await fetch("/api/generate", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              prompt,
-            }),
-          });
-
-          if (!response.ok) {
-            throw new Error(response.statusText);
-          }
-
-          // This data is a ReadableStream
-          const data = response.body;
-          if (!data) {
-            return;
-          }
-
-          const reader = data.getReader();
-          const decoder = new TextDecoder();
-          let done = false;
-
-          while (!done) {
-            const { value, done: doneReading } = await reader.read();
-            done = doneReading;
-            const chunkValue = decoder.decode(value);
-            setGeneratedFeedback((prev: any) => prev + chunkValue);
-          }
+        if (!response.ok || !response.body) {
+          throw new Error(
+            "The feedback service is unavailable right now. Please try again."
+          );
         }
-      } else {
-        console.error("Upload failed.");
+
+        // This data is a ReadableStream
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let done = false;
+
+        while (!done) {
+          const { value, done: doneReading } = await reader.read();
+          done = doneReading;
+          const chunkValue = decoder.decode(value);
+          setGeneratedFeedback((prev: any) => prev + chunkValue);
+        }
       }
 
       setTimeout(function () {
         setRecordedChunks([]);
       }, 1500);
+    } catch (error) {
+      console.error("Processing failed:", error);
+      setSubmitting(false);
+      setIsSuccess(false);
+      setStatus("Processing");
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "Something went wrong. Please try again."
+      );
     }
+  };
+
+  const handleRetryProcessing = () => {
+    setErrorMessage("");
+    setCompleted(false);
+    setIsSuccess(false);
+    setTranscript("");
+    setGeneratedFeedback("");
+    handleDownload();
   };
 
   function restartVideo() {
@@ -447,11 +462,29 @@ export default function DemoPage() {
                   <h2 className="text-xl font-semibold text-left text-[#1D2B3A] mb-2">
                     Feedback
                   </h2>
-                  <div className="mt-4 text-sm flex gap-2.5 rounded-lg border border-[#EEEEEE] bg-[#FAFAFA] p-4 leading-6 text-gray-900 min-h-[100px]">
-                    <p className="prose prose-sm max-w-none">
-                      {generatedFeedback}
-                    </p>
-                  </div>
+                  {errorMessage ? (
+                    <div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-4">
+                      <p className="text-sm font-medium text-red-800">
+                        {errorMessage}
+                      </p>
+                      <button
+                        onClick={handleRetryProcessing}
+                        disabled={isSubmitting}
+                        className="mt-3 inline-flex items-center gap-x-2 rounded-full bg-[#1E2B3A] px-4 py-2 text-[13px] font-semibold text-white transition-all active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        {isSubmitting ? "Retrying…" : "Try again"}
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="mt-4 text-sm flex gap-2.5 rounded-lg border border-[#EEEEEE] bg-[#FAFAFA] p-4 leading-6 text-gray-900 min-h-[100px]">
+                      <p className="prose prose-sm max-w-none">
+                        {generatedFeedback ||
+                          (transcript.trim().length > 0
+                            ? "Generating feedback…"
+                            : "We didn't catch a response to give feedback on. Want to try again?")}
+                      </p>
+                    </div>
+                  )}
                 </div>
               </motion.div>
             </div>
