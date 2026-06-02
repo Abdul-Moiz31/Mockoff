@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRef, useState, useEffect, useCallback } from "react";
 import Webcam from "react-webcam";
 import { createFFmpeg, fetchFile } from "@ffmpeg/ffmpeg";
+import FeedbackDisplay from "@/components/FeedbackDisplay";
 
 const questions = [
   {
@@ -78,9 +79,24 @@ export default function DemoPage() {
   const [transcript, setTranscript] = useState("");
   const [generatedFeedback, setGeneratedFeedback] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
+  const [unsupportedBrowser, setUnsupportedBrowser] = useState(false);
 
   useEffect(() => {
     setIsDesktop(window.innerWidth >= 768);
+
+    // iOS Safari hits the ffmpeg.wasm memory ceiling and SharedArrayBuffer is
+    // often unavailable, so in-browser transcoding fails. Warn up front instead
+    // of letting the recording break silently.
+    const ua = window.navigator.userAgent;
+    const isIOS =
+      /iPad|iPhone|iPod/.test(ua) ||
+      (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+    const isSafari =
+      /^((?!chrome|android|crios|fxios).)*safari/i.test(ua) || isIOS;
+    const noSharedArrayBuffer = typeof SharedArrayBuffer === "undefined";
+    if ((isIOS && isSafari) || (isIOS && noSharedArrayBuffer)) {
+      setUnsupportedBrowser(true);
+    }
   }, []);
 
   useEffect(() => {
@@ -235,11 +251,33 @@ export default function DemoPage() {
       setCompleted(true);
 
       if (transcriptText.trim().length > 0) {
-        const prompt = `Please give feedback on the following interview question: ${question} given the following transcript: ${transcriptText}. ${
+        const focus =
           selected.name === "Behavioral"
-            ? "Please also give feedback on the candidate's communication skills. Make sure their response is structured (perhaps using the STAR or PAR frameworks)."
-            : "Please also give feedback on the candidate's communication skills. Make sure they accurately explain their thoughts in a coherent way. Make sure they stay on topic and relevant to the question."
-        } \n\n\ Feedback on the candidate's response:`;
+            ? "Evaluate communication skills and whether the answer is well structured (e.g. the STAR framework: Situation, Task, Action, Result)."
+            : "Evaluate whether they explain their thinking clearly and coherently, and whether they stay on topic and relevant to the question.";
+
+        const prompt = `You are giving feedback on a candidate's mock interview answer.
+
+Question: ${question}
+
+Transcript of the candidate's answer:
+"""
+${transcriptText}
+"""
+
+${focus}
+
+Respond ONLY in the following format, using these exact section labels each on their own line:
+SCORE: <a single number from 0 to 100 rating the overall answer>
+SUMMARY: <2-3 sentence overall assessment>
+STRENGTHS:
+- <specific thing the candidate did well>
+- <another strength>
+IMPROVEMENTS:
+- <specific, actionable suggestion>
+- <another suggestion>
+
+Be concrete and reference what they actually said. Do not add any text outside these sections.`;
 
         setGeneratedFeedback("");
         setStatus("Generating feedback");
@@ -475,14 +513,38 @@ export default function DemoPage() {
                         {isSubmitting ? "Retrying…" : "Try again"}
                       </button>
                     </div>
+                  ) : transcript.trim().length === 0 ? (
+                    <div className="mt-4 rounded-lg border border-[#EEEEEE] bg-[#FAFAFA] p-4 text-sm leading-6 text-gray-700">
+                      We didn&apos;t catch a response to give feedback on. Want
+                      to try again?
+                    </div>
+                  ) : generatedFeedback ? (
+                    <div className="mt-4">
+                      <FeedbackDisplay feedback={generatedFeedback} />
+                    </div>
                   ) : (
-                    <div className="mt-4 text-sm flex gap-2.5 rounded-lg border border-[#EEEEEE] bg-[#FAFAFA] p-4 leading-6 text-gray-900 min-h-[100px]">
-                      <p className="prose prose-sm max-w-none">
-                        {generatedFeedback ||
-                          (transcript.trim().length > 0
-                            ? "Generating feedback…"
-                            : "We didn't catch a response to give feedback on. Want to try again?")}
-                      </p>
+                    <div className="mt-4 flex items-center gap-2 rounded-lg border border-[#EEEEEE] bg-[#FAFAFA] p-4 text-sm text-gray-500">
+                      <svg
+                        className="h-4 w-4 animate-spin"
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                      >
+                        <circle
+                          className="opacity-25"
+                          cx="12"
+                          cy="12"
+                          r="10"
+                          stroke="currentColor"
+                          strokeWidth={3}
+                        />
+                        <path
+                          className="opacity-75"
+                          fill="currentColor"
+                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                        />
+                      </svg>
+                      Generating feedback…
                     </div>
                   )}
                 </div>
@@ -504,6 +566,28 @@ export default function DemoPage() {
                   <span className="text-[14px] leading-[20px] text-[#1a2b3b] font-normal mb-4">
                     Asked by top companies like Google, Facebook and more
                   </span>
+                  {unsupportedBrowser && (
+                    <div className="mb-4 flex gap-2.5 rounded-lg border border-amber-200 bg-amber-50 p-3">
+                      <svg
+                        className="h-5 w-5 shrink-0 text-amber-600"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                      >
+                        <path
+                          d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                      <p className="text-[13px] leading-[18px] text-amber-800">
+                        Recording and in-browser processing may not work on iOS
+                        Safari due to memory limits. For the best experience, use
+                        desktop Chrome, Edge, or Firefox.
+                      </p>
+                    </div>
+                  )}
                   <motion.div
                     initial={{ y: -20 }}
                     animate={{ y: 0 }}
