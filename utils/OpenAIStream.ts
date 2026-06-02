@@ -23,7 +23,16 @@ export interface OpenAIStreamPayload {
   n: number;
 }
 
-export async function OpenAIStream(payload: OpenAIStreamPayload) {
+/**
+ * Calls the OpenAI chat completions API with streaming and returns a Web
+ * ReadableStream of plain text deltas. Runtime-agnostic (works in Node and Edge).
+ *
+ * Throws if the upstream request fails so callers can surface a real error
+ * instead of streaming an empty body.
+ */
+export async function OpenAIStream(
+  payload: OpenAIStreamPayload
+): Promise<ReadableStream<Uint8Array>> {
   const encoder = new TextEncoder();
   const decoder = new TextDecoder();
 
@@ -38,13 +47,18 @@ export async function OpenAIStream(payload: OpenAIStreamPayload) {
     body: JSON.stringify(payload),
   });
 
-  const stream = new ReadableStream({
+  if (!res.ok || !res.body) {
+    const detail = await res.text().catch(() => "");
+    throw new Error(
+      `OpenAI request failed (${res.status}): ${detail.slice(0, 200)}`
+    );
+  }
+
+  const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
-      // callback
       function onParse(event: ParsedEvent | ReconnectInterval) {
         if (event.type === "event") {
           const data = event.data;
-          // https://beta.openai.com/docs/api-reference/completions/create#completions/create-stream
           if (data === "[DONE]") {
             controller.close();
             return;
@@ -53,23 +67,18 @@ export async function OpenAIStream(payload: OpenAIStreamPayload) {
             const json = JSON.parse(data);
             const text = json.choices[0].delta?.content || "";
             if (counter < 2 && (text.match(/\n/) || []).length) {
-              // this is a prefix character (i.e., "\n\n"), do nothing
+              // skip leading newline prefix characters
               return;
             }
-            const queue = encoder.encode(text);
-            controller.enqueue(queue);
+            controller.enqueue(encoder.encode(text));
             counter++;
           } catch (e) {
-            // maybe parse error
             controller.error(e);
           }
         }
       }
 
-      // stream response (SSE) from OpenAI may be fragmented into multiple chunks
-      // this ensures we properly read chunks and invoke an event for each SSE event stream
       const parser = createParser(onParse);
-      // https://web.dev/streams/#asynchronous-iteration
       for await (const chunk of res.body as any) {
         parser.feed(decoder.decode(chunk));
       }
