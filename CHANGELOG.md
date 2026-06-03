@@ -5,6 +5,20 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Phase 4 — Frontend UX
+- **Landing CTA:** "Start a mock interview" is now the primary above-the-fold action (prominent
+  dark button with arrow); "Star on GitHub" is demoted to a secondary button. Visitors now know
+  what to do first.
+- **Structured feedback:** the AI now returns a score (0–100), a summary, strengths, and
+  improvement suggestions. A new `FeedbackDisplay` component renders these with a colored score
+  badge, labelled sections, and bullet lists instead of one plain-text blob. Parsing is forgiving
+  and falls back to plain text for off-format responses.
+- **Results UX:** clear "Generating feedback…" loading state, empty-response guidance, and the
+  Phase 2 error/retry state are now distinct.
+- **Mobile/Safari:** iOS Safari users see a non-blocking warning before recording (ffmpeg.wasm
+  memory limits), recommending desktop Chrome/Edge/Firefox.
+- **Cleanup:** removed 577 lines of dead commented-out landing-page code from `app/page.tsx`.
+
 ### Phase 3 — Backend Reliability
 - **Render compatibility:** converted `/api/generate` from the Vercel Edge runtime to a Node
   streaming handler so it deploys cleanly on Render. Feedback still streams token-by-token; the
