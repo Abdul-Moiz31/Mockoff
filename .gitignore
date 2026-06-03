@@ -34,3 +34,8 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# internal planning / working notes (not for public repo)
+PROJECT_MEMORY.md
+AUDIT_REPORT.md
+IMPLEMENTATION_PLAN.md
