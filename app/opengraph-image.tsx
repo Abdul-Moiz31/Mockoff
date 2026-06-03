@@ -2,7 +2,7 @@
 import { ImageResponse } from "next/server";
 
 export const runtime = "edge";
-export const alt = "Precedent - Building blocks for your Next.js project";
+export const alt = "Mockoff - AI-Powered Mock Interviews";
 export const contentType = "image/png";
 
 export default async function OG() {
@@ -31,7 +31,7 @@ export default async function OG() {
             "../public/apple-touch-icon.png",
             import.meta.url
           ).toString()}
-          alt="Liftoff Logo"
+          alt="Mockoff Logo"
           tw="w-20 h-20 mb-4 opacity-95"
         />
         <h1
