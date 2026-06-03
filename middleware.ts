@@ -8,7 +8,8 @@ export default async function middleware(
 ): Promise<Response | undefined> {
   const ip = request.ip ?? "127.0.0.1";
 
-  // ratelimit for demo app: https://demo.useliftoff.com/
+  // Optional rate limiting for the public demo. Disabled automatically unless
+  // both Upstash env vars are present, so local/Render deploys work without it.
   if (
     process.env.NODE_ENV != "development" &&
     process.env.UPSTASH_REDIS_REST_URL &&
